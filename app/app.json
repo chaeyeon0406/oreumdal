@@ -11,12 +11,31 @@
       "resizeMode": "contain",
       "backgroundColor": "#FAFAF8"
     },
+    "scheme": "oremdal",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.oremdal.app"
+      "bundleIdentifier": "com.oremdal.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.oremdal.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "oremdal"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#FAFAF8",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -29,7 +48,13 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-font"
-    ]
+      "expo-font",
+      "expo-web-browser"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a8a4644e-744b-4674-bc39-a936cf081d32"
+      }
+    }
   }
 }

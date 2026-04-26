@@ -1,39 +1,107 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, TextInput,
-  TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform,
+  TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as WebBrowser from 'expo-web-browser';
 import { MainStackParamList } from '../../types';
 import { Colors } from '../../constants/colors';
 import { useUserStore } from '../../store/userStore';
 import ScaleButton from '../../components/common/ScaleButton';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'SignUp'>;
-type Route = RouteProp<MainStackParamList, 'SignUp'>;
-
+type Provider = 'google' | 'kakao' | 'apple';
 type Step = 'social' | 'profile';
+
+const API_BASE = 'https://oreumdal.co.kr';
+const DEEP_LINK_BASE = 'oremdal://app';
+
+function parseUrlParams(url: string): Record<string, string> {
+  const query = url.split('?')[1] ?? '';
+  if (!query) return {};
+  return Object.fromEntries(
+    query.split('&').map((pair) => {
+      const idx = pair.indexOf('=');
+      const key = pair.slice(0, idx);
+      const val = decodeURIComponent(pair.slice(idx + 1));
+      return [key, val];
+    })
+  );
+}
 
 export default function SignUpScreen() {
   const navigation = useNavigation<Nav>();
-  const route = useRoute<Route>();
   const login = useUserStore((s) => s.login);
 
   const [step, setStep] = useState<Step>('social');
+  const [loadingProvider, setLoadingProvider] = useState<Provider | null>(null);
   const [nickname, setNickname] = useState('');
   const [agreeRequired, setAgreeRequired] = useState(false);
   const [agreeMarketing, setAgreeMarketing] = useState(false);
 
+  // 로그인 후 받은 토큰/유저 정보를 임시 보관
+  const [pendingAuth, setPendingAuth] = useState<{
+    userId: string;
+    accessToken: string;
+    refreshToken: string;
+    provider: string;
+  } | null>(null);
+
   const canComplete = nickname.trim().length > 0 && agreeRequired;
 
-  const handleSocial = (_provider: 'google' | 'apple') => {
-    setStep('profile');
+  const handleSocial = async (provider: Provider) => {
+    setLoadingProvider(provider);
+    try {
+      const loginUrl =
+        `${API_BASE}/api/auth/${provider}` +
+        `?platform=app&front_url=${encodeURIComponent(DEEP_LINK_BASE)}`;
+
+      const result = await WebBrowser.openAuthSessionAsync(
+        loginUrl,
+        DEEP_LINK_BASE,
+      );
+
+      if (result.type !== 'success') return;
+
+      const params = parseUrlParams(result.url);
+      const { access_token, refresh_token, user_id, nick_name } = params;
+
+      if (!access_token || !user_id) {
+        Alert.alert('로그인 실패', '인증 정보를 받지 못했습니다. 다시 시도해 주세요.');
+        return;
+      }
+
+      setPendingAuth({
+        userId: user_id,
+        accessToken: access_token,
+        refreshToken: refresh_token ?? '',
+        provider,
+      });
+
+      // 백엔드에서 받은 이름 pre-fill
+      if (nick_name && nick_name !== 'None') {
+        setNickname(nick_name.slice(0, 10));
+      }
+
+      setStep('profile');
+    } catch (e) {
+      Alert.alert('오류', '로그인 중 문제가 발생했습니다. 다시 시도해 주세요.');
+    } finally {
+      setLoadingProvider(null);
+    }
   };
 
   const handleComplete = () => {
-    if (!canComplete) return;
-    login(nickname.trim());
+    if (!canComplete || !pendingAuth) return;
+    login({
+      nickname: nickname.trim(),
+      userId: pendingAuth.userId,
+      accessToken: pendingAuth.accessToken,
+      refreshToken: pendingAuth.refreshToken,
+      provider: pendingAuth.provider,
+    });
     navigation.navigate('Tabs');
   };
 
@@ -54,17 +122,39 @@ export default function SignUpScreen() {
 
           <View style={styles.buttons}>
             <ScaleButton
+              style={styles.kakaoBtn}
+              onPress={() => handleSocial('kakao')}
+              disabled={loadingProvider !== null}
+            >
+              {loadingProvider === 'kakao' ? (
+                <ActivityIndicator color="#000" />
+              ) : (
+                <Text style={styles.kakaoBtnText}>카카오로 계속하기</Text>
+              )}
+            </ScaleButton>
+
+            <ScaleButton
               style={styles.googleBtn}
               onPress={() => handleSocial('google')}
+              disabled={loadingProvider !== null}
             >
-              <Text style={styles.googleBtnText}>Google로 계속하기</Text>
+              {loadingProvider === 'google' ? (
+                <ActivityIndicator color={Colors.textPrimary} />
+              ) : (
+                <Text style={styles.googleBtnText}>Google로 계속하기</Text>
+              )}
             </ScaleButton>
 
             <ScaleButton
               style={styles.appleBtn}
               onPress={() => handleSocial('apple')}
+              disabled={loadingProvider !== null}
             >
-              <Text style={styles.appleBtnText}>Apple로 계속하기</Text>
+              {loadingProvider === 'apple' ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.appleBtnText}>Apple로 계속하기</Text>
+              )}
             </ScaleButton>
 
             <Text style={styles.terms}>
@@ -184,6 +274,17 @@ const styles = StyleSheet.create({
     lineHeight: 15 * 1.7,
   },
   buttons: { gap: 10 },
+  kakaoBtn: {
+    borderRadius: 10,
+    padding: 17,
+    alignItems: 'center',
+    backgroundColor: '#FEE500',
+  },
+  kakaoBtnText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#000000',
+  },
   googleBtn: {
     borderRadius: 10,
     padding: 17,
