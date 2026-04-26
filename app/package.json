@@ -41,8 +41,5 @@
     "@types/react": "~19.2.2",
     "typescript": "~5.9.2"
   },
-  "private": true,
-  "overrides": {
-    "react-native-worklets": "0.7.4"
-  }
+  "private": true
 }

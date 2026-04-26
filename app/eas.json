@@ -14,6 +14,9 @@
       "distribution": "internal",
       "ios": {
         "simulator": false
+      },
+      "cache": {
+        "disabled": true
       }
     },
     "production": {
