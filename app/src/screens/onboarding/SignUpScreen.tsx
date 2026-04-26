@@ -9,6 +9,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { MainStackParamList } from '../../types';
 import { Colors } from '../../constants/colors';
 import { useUserStore } from '../../store/userStore';
+import { useRecordStore } from '../../store/recordStore';
 import ScaleButton from '../../components/common/ScaleButton';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'SignUp'>;
@@ -34,6 +35,7 @@ function parseUrlParams(url: string): Record<string, string> {
 export default function SignUpScreen() {
   const navigation = useNavigation<Nav>();
   const login = useUserStore((s) => s.login);
+  const clearRecords = useRecordStore((s) => s.clearRecords);
 
   const [step, setStep] = useState<Step>('social');
   const [loadingProvider, setLoadingProvider] = useState<Provider | null>(null);
@@ -95,6 +97,7 @@ export default function SignUpScreen() {
 
   const handleComplete = () => {
     if (!canComplete || !pendingAuth) return;
+    clearRecords();
     login({
       nickname: nickname.trim(),
       userId: pendingAuth.userId,

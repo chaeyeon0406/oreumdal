@@ -7,6 +7,7 @@ import { MainStackParamList, EmotionType, TradeDirection, SessionRecord } from '
 import ScaleButton from '../../components/common/ScaleButton';
 import CheckBottomSheet from '../../components/check/CheckBottomSheet';
 import { useRecordStore } from '../../store/recordStore';
+import { useUserStore } from '../../store/userStore';
 
 type Nav = NativeStackNavigationProp<MainStackParamList>;
 
@@ -261,6 +262,7 @@ export default function HomeScreen() {
   const navigation = useNavigation<Nav>();
   const [sheetVisible, setSheetVisible] = useState(false);
   const records = useRecordStore((s) => s.records);
+  const isLoggedIn = useUserStore((s) => s.isLoggedIn);
   const recentSessions = records.filter((r) => r.type === 'check').slice(0, 2);
 
   const handleStart = ({
@@ -328,12 +330,15 @@ export default function HomeScreen() {
 
       {/* 하단 CTA */}
       <View style={styles.bottomBar}>
-        <ScaleButton style={styles.primaryBtn} onPress={() => setSheetVisible(true)}>
+        <ScaleButton
+          style={styles.primaryBtn}
+          onPress={() => isLoggedIn ? setSheetVisible(true) : navigation.navigate('SignUp')}
+        >
           <Text style={styles.primaryBtnText}>매매 전 체크할게요</Text>
         </ScaleButton>
         <ScaleButton
           style={styles.secondaryBtn}
-          onPress={() => navigation.navigate('PostTrade')}
+          onPress={() => isLoggedIn ? navigation.navigate('PostTrade') : navigation.navigate('SignUp')}
         >
           <Text style={styles.secondaryBtnText}>매매 했어요 기록할게요</Text>
         </ScaleButton>

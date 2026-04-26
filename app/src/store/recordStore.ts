@@ -149,6 +149,7 @@ interface RecordStore {
   records: SessionRecord[];
   addRecord: (record: Omit<SessionRecord, 'id' | 'created_at'>) => void;
   updateTradeOutcome: (id: string, outcome: TradeOutcome) => void;
+  clearRecords: () => void;
 }
 
 export const useRecordStore = create<RecordStore>((set) => ({
@@ -168,4 +169,5 @@ export const useRecordStore = create<RecordStore>((set) => ({
       ),
     }));
   },
+  clearRecords: () => set({ records: [] }),
 }));

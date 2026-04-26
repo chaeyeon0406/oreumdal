@@ -1,13 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TextInput, TouchableOpacity,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { MainStackParamList, SessionRecord, TradeOutcome } from '../../types';
 import { useRecordStore } from '../../store/recordStore';
+import { useUserStore } from '../../store/userStore';
 import ScaleButton from '../../components/common/ScaleButton';
 
 type Nav = NativeStackNavigationProp<MainStackParamList>;
@@ -74,6 +75,15 @@ function applyFilter(records: SessionRecord[], filter: Filter): SessionRecord[] 
 export default function RecordsScreen() {
   const navigation = useNavigation<Nav>();
   const records = useRecordStore((s) => s.records);
+  const isLoggedIn = useUserStore((s) => s.isLoggedIn);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isLoggedIn) {
+        navigation.navigate('SignUp');
+      }
+    }, [isLoggedIn])
+  );
 
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<Filter>('all');
