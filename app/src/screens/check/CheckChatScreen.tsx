@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, ScrollView, SafeAreaView,
-  KeyboardAvoidingView, Platform, Animated, TouchableOpacity, Alert,
+  KeyboardAvoidingView, Platform, Animated, Alert,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,6 +11,9 @@ import ScaleButton from '../../components/common/ScaleButton';
 import { useRecordStore } from '../../store/recordStore';
 import { useUserStore } from '../../store/userStore';
 import SignUpBottomSheet from '../../components/common/SignUpBottomSheet';
+import { sendCoachingMessage, generateConclusion } from '../../lib/ai';
+import { buildRecordSummary } from '../../lib/ai/recordSummary';
+import { fetchMarketContext } from '../../lib/ai/marketContext';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'CheckChat'>;
 type Route = RouteProp<MainStackParamList, 'CheckChat'>;
@@ -61,11 +64,16 @@ export default function CheckChatScreen() {
   const { stockName, direction, emotions, emotionLabel } = route.params;
   const directionText = direction === 'buy' ? '매수' : '매도';
   const addRecord = useRecordStore((s) => s.addRecord);
+  const records = useRecordStore((s) => s.records);
   const isLoggedIn = useUserStore((s) => s.isLoggedIn);
+  const principles = useUserStore((s) => s.principles);
+
+  // 세션 시작 시 한 번만 수집하는 컨텍스트 (ref로 관리, 리렌더 불필요)
+  const sessionCtx = useRef({ recordSummary: '', marketContext: '' });
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isTyping, setIsTyping] = useState(false);
-  const [inputMode, setInputMode] = useState<InputMode>('q1');
+  const [inputMode, setInputMode] = useState<InputMode>('done'); // 'done' until Q1 arrives
   const [customText, setCustomText] = useState('');
   const [result, setResult] = useState<ResultData | null>(null);
   const [tradeOutcome, setTradeOutcome] = useState<TradeOutcome>(null);
@@ -77,86 +85,95 @@ export default function CheckChatScreen() {
   const scrollToBottom = () =>
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
 
-  const showTypingThen = async (msg: string, delay = 1000) => {
+  const callAIQuestion = async (currentMessages: ChatMessage[]) => {
     setIsTyping(true);
     scrollToBottom();
-    await new Promise(r => setTimeout(r, delay));
-    setIsTyping(false);
-    setMessages(prev => [...prev, { role: 'assistant', content: msg }]);
-    scrollToBottom();
+    try {
+      const reply = await sendCoachingMessage({
+        stockName,
+        direction,
+        emotions,
+        emotionLabel,
+        investmentPrinciples: principles || undefined,
+        recordSummary: sessionCtx.current.recordSummary || undefined,
+        marketContext: sessionCtx.current.marketContext || undefined,
+        messages: currentMessages,
+      });
+      setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+      const userCount = currentMessages.filter(m => m.role === 'user').length;
+      if (userCount === 0) setInputMode('q1');
+      else if (userCount === 1) setInputMode('q2');
+      else setInputMode('q3');
+    } catch {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '잠시 연결이 불안정해요. 다시 시도해주세요.',
+      }]);
+    } finally {
+      setIsTyping(false);
+      scrollToBottom();
+    }
   };
 
-  const addUser = (content: string) => {
-    setMessages(prev => [...prev, { role: 'user', content }]);
+  const callAIConclusion = async (currentMessages: ChatMessage[]) => {
+    setIsTyping(true);
     scrollToBottom();
+    try {
+      const res = await generateConclusion({
+        stockName,
+        direction,
+        emotions,
+        emotionLabel,
+        investmentPrinciples: principles || undefined,
+        recordSummary: sessionCtx.current.recordSummary || undefined,
+        marketContext: sessionCtx.current.marketContext || undefined,
+        messages: currentMessages,
+      });
+      setResult({
+        score: res.impulseScore,
+        verdict: res.conclusion === 'ok' ? '괜찮아요' : '다시 생각해봐요',
+        reason: res.reason,
+      });
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+    } catch {
+      setResult({ score: 55, verdict: '다시 생각해봐요', reason: '결과를 분석하지 못했어요' });
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+    } finally {
+      setIsTyping(false);
+      scrollToBottom();
+    }
+  };
+
+  const handleUserChoice = (text: string) => {
+    if (!text.trim()) return;
+    const userMsg: ChatMessage = { role: 'user', content: text.trim() };
+    const nextMessages = [...messages, userMsg];
+    setMessages(prev => [...prev, userMsg]);
+    setCustomText('');
+    setInputMode('done');
+    scrollToBottom();
+
+    const userCount = nextMessages.filter(m => m.role === 'user').length;
+    if (userCount < 3) {
+      callAIQuestion(nextMessages);
+    } else {
+      callAIConclusion(nextMessages);
+    }
+  };
+
+  const handleQ3Choice = (choice: string) => {
+    const text = customText.trim() ? `${choice} — ${customText.trim()}` : choice;
+    handleUserChoice(text);
   };
 
   useEffect(() => {
-    showTypingThen(
-      `${stockName} ${directionText}를 고려하고 있군요.\n\n이 종목을 ${directionText}하려는 이유가 뭔가요?`,
-      1200
-    );
+    const init = async () => {
+      sessionCtx.current.recordSummary = buildRecordSummary(records, stockName);
+      sessionCtx.current.marketContext = await fetchMarketContext(stockName).catch(() => '');
+      callAIQuestion([]);
+    };
+    init();
   }, []);
-
-  const submit = async (userText: string, nextQ: () => Promise<void>) => {
-    addUser(userText);
-    setCustomText('');
-    setInputMode('done');
-    await nextQ();
-  };
-
-  const handleQ1 = (choice: string) => {
-    submit(choice, async () => {
-      await showTypingThen(
-        `지금 이 느낌, 어디서 왔을 것 같아요?\n\n감정("${emotionLabel}")이 판단에 얼마나 영향을 줬을지 함께 생각해봐요.`,
-        1000
-      );
-      setInputMode('q2');
-    });
-  };
-
-  const handleQ2 = (choice: string) => {
-    submit(choice, async () => {
-      await showTypingThen(
-        '잘 들었어요.\n\n마지막으로, 지금 이 결정이 내가 세운 투자 원칙이랑 맞는 것 같아요?',
-        1000
-      );
-      setInputMode('q3');
-    });
-  };
-
-  const handleQ3 = async (choice: string) => {
-    const userText = customText.trim() ? `${choice} — ${customText.trim()}` : choice;
-    addUser(userText);
-    setCustomText('');
-    setInputMode('done');
-
-    await new Promise(r => setTimeout(r, 1200));
-
-    const score =
-      choice === '솔직히 아닌 것 같아요' ? 78
-      : choice === '잘 모르겠어요' ? 55
-      : 30;
-
-    setResult({
-      score,
-      verdict: score >= 55 ? '다시 생각해봐요' : '괜찮아요',
-      reason:
-        choice === '솔직히 아닌 것 같아요' ? '원칙과 어긋난 판단일 가능성이 높아요'
-        : choice === '잘 모르겠어요' ? '확신 없는 상태에서의 매매는 위험할 수 있어요'
-        : '원칙에 기반한 판단으로 보여요',
-    });
-
-    Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
-    scrollToBottom();
-  };
-
-  const handleCustomSubmit = (mode: InputMode) => {
-    if (!customText.trim()) return;
-    if (mode === 'q1') handleQ1(customText.trim());
-    else if (mode === 'q2') handleQ2(customText.trim());
-    else if (mode === 'q3') handleQ3(customText.trim());
-  };
 
   const doSave = () => {
     if (result) {
@@ -187,10 +204,11 @@ export default function CheckChatScreen() {
     }
   };
 
-  const handleLaterNotify = () => {
-    // TODO: expo-notifications 스케줄링
-    Alert.alert('알림 예약', '나중에 결과를 알려드릴게요. (알림 기능은 곧 추가 예정)');
-    navigation.goBack();
+  const handleLaterOutcomeNotify = () => {
+    Alert.alert(
+      '알림 예약',
+      `오늘 저녁 8시에 "${stockName} ${directionText}, 결국 어떻게 하셨나요?" 알림을 보내드릴게요.\n(알림 기능은 곧 추가 예정)`
+    );
   };
 
   const handleTradeOutcome = (outcome: TradeOutcome) => {
@@ -199,21 +217,13 @@ export default function CheckChatScreen() {
     scrollToBottom();
   };
 
-  const handleLaterOutcomeNotify = () => {
-    // TODO: expo-notifications — 당일 저녁 8시 스케줄
-    Alert.alert(
-      '알림 예약',
-      `오늘 저녁 8시에 "${stockName} ${directionText}, 결국 어떻게 하셨나요?" 알림을 보내드릴게요.\n(알림 기능은 곧 추가 예정)`
-    );
-  };
-
-  const renderChoiceArea = (mode: InputMode, options: string[], onSelect: (v: string) => void) => (
+  const renderChoiceArea = (options: string[], onSelect: (v: string) => void) => (
     <View style={styles.inputArea}>
       <View style={styles.choiceGrid}>
         {options.map(opt => (
-          <TouchableOpacity key={opt} style={styles.choiceBtn} onPress={() => onSelect(opt)}>
+          <ScaleButton key={opt} style={styles.choiceBtn} onPress={() => onSelect(opt)}>
             <Text style={styles.choiceBtnText}>{opt}</Text>
-          </TouchableOpacity>
+          </ScaleButton>
         ))}
       </View>
       <View style={styles.customRow}>
@@ -224,11 +234,11 @@ export default function CheckChatScreen() {
           value={customText}
           onChangeText={setCustomText}
           returnKeyType="send"
-          onSubmitEditing={() => handleCustomSubmit(mode)}
+          onSubmitEditing={() => handleUserChoice(customText.trim())}
         />
         <ScaleButton
           style={[styles.sendBtn, !customText.trim() && styles.sendBtnDisabled]}
-          onPress={() => handleCustomSubmit(mode)}
+          onPress={() => handleUserChoice(customText.trim())}
           disabled={!customText.trim()}
         >
           <Text style={styles.sendBtnText}>→</Text>
@@ -241,9 +251,9 @@ export default function CheckChatScreen() {
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
+          <ScaleButton onPress={() => navigation.goBack()} style={styles.closeBtn}>
             <Text style={styles.closeBtnText}>✕</Text>
-          </TouchableOpacity>
+          </ScaleButton>
           <Text style={styles.headerTitle}>{stockName} · {directionText}</Text>
           <View style={{ width: 40 }} />
         </View>
@@ -284,14 +294,13 @@ export default function CheckChatScreen() {
 
               <Text style={styles.resultReason}>{result.reason}</Text>
 
-              {/* 결국 어떻게 하셨어요? */}
               <View style={styles.outcomeSectionDivider} />
               <Text style={styles.outcomeSectionLabel}>결국 어떻게 하셨어요?</Text>
 
               {tradeOutcome === null ? (
                 <View style={styles.outcomeButtons}>
                   {(['아직 안 했어요', '했어요', '안 하기로 했어요', '나중에 알려주기'] as const).map((label, i) => (
-                    <TouchableOpacity
+                    <ScaleButton
                       key={label}
                       style={styles.outcomeBtn}
                       onPress={() => {
@@ -300,7 +309,7 @@ export default function CheckChatScreen() {
                       }}
                     >
                       <Text style={styles.outcomeBtnText}>{label}</Text>
-                    </TouchableOpacity>
+                    </ScaleButton>
                   ))}
                 </View>
               ) : (
@@ -313,7 +322,6 @@ export default function CheckChatScreen() {
                 </Animated.View>
               )}
 
-              {/* 액션 버튼 */}
               <View style={styles.resultActions}>
                 <ScaleButton style={styles.saveBtn} onPress={handleSaveAndClose}>
                   <Text style={styles.saveBtnText}>기록 저장하고 닫기</Text>
@@ -326,15 +334,15 @@ export default function CheckChatScreen() {
 
         {!result && inputMode !== 'done' && (
           <>
-            {inputMode === 'q1' && renderChoiceArea('q1', Q1_OPTIONS, handleQ1)}
-            {inputMode === 'q2' && renderChoiceArea('q2', Q2_OPTIONS, handleQ2)}
+            {inputMode === 'q1' && renderChoiceArea(Q1_OPTIONS, handleUserChoice)}
+            {inputMode === 'q2' && renderChoiceArea(Q2_OPTIONS, handleUserChoice)}
             {inputMode === 'q3' && (
               <View style={styles.inputArea}>
                 <View style={styles.choiceGrid}>
                   {Q3_OPTIONS.map(opt => (
-                    <TouchableOpacity key={opt} style={styles.choiceBtn} onPress={() => handleQ3(opt)}>
+                    <ScaleButton key={opt} style={styles.choiceBtn} onPress={() => handleQ3Choice(opt)}>
                       <Text style={styles.choiceBtnText}>{opt}</Text>
-                    </TouchableOpacity>
+                    </ScaleButton>
                   ))}
                 </View>
                 <View style={styles.customRow}>
@@ -345,11 +353,11 @@ export default function CheckChatScreen() {
                     value={customText}
                     onChangeText={setCustomText}
                     returnKeyType="send"
-                    onSubmitEditing={() => handleCustomSubmit('q3')}
+                    onSubmitEditing={() => handleUserChoice(customText.trim())}
                   />
                   <ScaleButton
                     style={[styles.sendBtn, !customText.trim() && styles.sendBtnDisabled]}
-                    onPress={() => handleCustomSubmit('q3')}
+                    onPress={() => handleUserChoice(customText.trim())}
                     disabled={!customText.trim()}
                   >
                     <Text style={styles.sendBtnText}>→</Text>
@@ -380,7 +388,7 @@ const styles = StyleSheet.create({
   closeBtnText: { fontSize: 18, color: Colors.textSecondary },
   headerTitle: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
 
-  chatContent: { padding: 20, gap: 12, paddingBottom: 8 },
+  chatContent: { padding: 20, gap: 16, paddingBottom: 8 },
   bubbleWrapAI: { alignSelf: 'flex-start', maxWidth: '82%' },
   bubbleWrapUser: { alignSelf: 'flex-end', maxWidth: '82%' },
   bubbleAI: {
@@ -423,9 +431,7 @@ const styles = StyleSheet.create({
 
   // 결국 어떻게 하셨어요?
   outcomeSectionDivider: { height: 0.5, backgroundColor: Colors.border, marginVertical: 2 },
-  outcomeSectionLabel: {
-    fontSize: 13, fontWeight: '600', color: Colors.textPrimary,
-  },
+  outcomeSectionLabel: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
   outcomeButtons: { gap: 8 },
   outcomeBtn: {
     paddingVertical: 11, paddingHorizontal: 16, borderRadius: 10,
@@ -433,10 +439,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   outcomeBtnText: { fontSize: 14, color: Colors.textPrimary, fontWeight: '500' },
-  outcomeLaterText: {
-    fontSize: 13, color: Colors.textMuted, textAlign: 'center',
-    paddingVertical: 6,
-  },
   outcomeConfirm: {
     fontSize: 13, color: Colors.textSecondary, lineHeight: 13 * 1.7,
     fontStyle: 'italic',
@@ -449,21 +451,15 @@ const styles = StyleSheet.create({
     padding: 15, alignItems: 'center',
   },
   saveBtnText: { color: '#FFF', fontSize: 15, fontWeight: '600' },
-  laterBtn: {
-    backgroundColor: Colors.surface, borderRadius: 10,
-    padding: 15, alignItems: 'center',
-    borderWidth: 0.5, borderColor: Colors.border,
-  },
-  laterBtnText: { fontSize: 15, color: Colors.textSecondary },
 
   // 입력 영역
   inputArea: {
     borderTopWidth: 0.5, borderTopColor: Colors.border,
-    padding: 16, gap: 10, backgroundColor: Colors.background,
+    padding: 20, gap: 12, backgroundColor: Colors.background,
   },
-  choiceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  choiceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   choiceBtn: {
-    paddingVertical: 10, paddingHorizontal: 16,
+    paddingVertical: 12, paddingHorizontal: 18,
     borderRadius: 20, backgroundColor: Colors.surface,
     borderWidth: 0.5, borderColor: Colors.border,
   },

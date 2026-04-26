@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, TextInput,
-  TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
+  ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -112,9 +112,9 @@ export default function SignUpScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.content}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
+          <ScaleButton onPress={() => navigation.goBack()} style={styles.closeBtn}>
             <Text style={styles.closeBtnText}>✕</Text>
-          </TouchableOpacity>
+          </ScaleButton>
 
           <View style={styles.top}>
             <Text style={styles.title}>오름달 가입</Text>
@@ -180,9 +180,9 @@ export default function SignUpScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <TouchableOpacity onPress={() => setStep('social')} style={styles.closeBtn}>
+          <ScaleButton onPress={() => setStep('social')} style={styles.closeBtn}>
             <Text style={styles.closeBtnText}>←</Text>
-          </TouchableOpacity>
+          </ScaleButton>
 
           <Text style={styles.title}>닉네임을 정해봐요</Text>
           <Text style={styles.desc}>앱 안에서 사용할 이름이에요</Text>
@@ -201,7 +201,7 @@ export default function SignUpScreen() {
           </View>
 
           <View style={styles.consentSection}>
-            <TouchableOpacity
+            <ScaleButton
               style={styles.checkRow}
               onPress={() => setAgreeRequired(!agreeRequired)}
             >
@@ -212,9 +212,9 @@ export default function SignUpScreen() {
                 <Text style={styles.required}>[필수] </Text>
                 이용약관 및 개인정보처리방침 동의
               </Text>
-            </TouchableOpacity>
+            </ScaleButton>
 
-            <TouchableOpacity
+            <ScaleButton
               style={styles.checkRow}
               onPress={() => setAgreeMarketing(!agreeMarketing)}
             >
@@ -225,7 +225,7 @@ export default function SignUpScreen() {
                 <Text style={styles.optional}>[선택] </Text>
                 마케팅 정보 수신 동의
               </Text>
-            </TouchableOpacity>
+            </ScaleButton>
           </View>
 
           <ScaleButton

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TextInput, TouchableOpacity,
+  TextInput,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -124,7 +124,7 @@ export default function RecordsScreen() {
           {FILTER_PILLS.map(({ value, label }) => {
             const active = activeFilter === value;
             return (
-              <TouchableOpacity
+              <ScaleButton
                 key={value}
                 style={[styles.pill, active && styles.pillActive]}
                 onPress={() => setActiveFilter(value)}
@@ -132,7 +132,7 @@ export default function RecordsScreen() {
                 <Text style={[styles.pillText, active && styles.pillTextActive]}>
                   {label}
                 </Text>
-              </TouchableOpacity>
+              </ScaleButton>
             );
           })}
         </ScrollView>
@@ -209,10 +209,11 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 16,
     paddingVertical: 2,
+    alignItems: 'center',
   },
   pill: {
-    paddingVertical: 7,
-    paddingHorizontal: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 20,
     backgroundColor: Colors.surface,
     borderWidth: 0.5,
@@ -226,13 +227,13 @@ const styles = StyleSheet.create({
   pillTextActive: { color: '#FFF' },
 
   // 목록
-  list: { paddingHorizontal: 16, gap: 10 },
+  list: { paddingHorizontal: 16, gap: 12 },
   emptyWrap: { paddingTop: 60, alignItems: 'center' },
   emptyText: { fontSize: 15, color: Colors.textMuted },
 
   card: {
-    backgroundColor: Colors.surface, borderRadius: 16, padding: 18,
-    borderWidth: 0.5, borderColor: Colors.border, gap: 8,
+    backgroundColor: Colors.surface, borderRadius: 16, padding: 20,
+    borderWidth: 0.5, borderColor: Colors.border, gap: 10,
   },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   cardLeft: { gap: 3, flex: 1, marginRight: 12 },

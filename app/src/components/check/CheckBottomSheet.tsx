@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, ScrollView,
   KeyboardAvoidingView, Platform, Modal, Animated,
-  Dimensions, TouchableWithoutFeedback, TouchableOpacity,
+  Dimensions, TouchableWithoutFeedback,
 } from 'react-native';
 import { Colors } from '../../constants/colors';
 import { EmotionType, TradeDirection } from '../../types';
@@ -77,9 +77,9 @@ export default function CheckBottomSheet({ visible, onStart, onClose }: Props) {
               <Text style={styles.sectionLabel}>방향</Text>
               <View style={styles.pillRow}>
                 {(['buy', 'sell'] as TradeDirection[]).map((d) => (
-                  <TouchableOpacity key={d} style={[styles.pill, direction === d && styles.pillActive]} onPress={() => setDirection(d)}>
+                  <ScaleButton key={d} style={[styles.pill, direction === d && styles.pillActive]} onPress={() => setDirection(d)}>
                     <Text style={[styles.pillText, direction === d && styles.pillTextActive]}>{d === 'buy' ? '매수' : '매도'}</Text>
-                  </TouchableOpacity>
+                  </ScaleButton>
                 ))}
               </View>
             </View>
@@ -88,9 +88,9 @@ export default function CheckBottomSheet({ visible, onStart, onClose }: Props) {
               <Text style={styles.sectionLabel}>지금 감정 (복수 선택)</Text>
               <View style={styles.emotionGrid}>
                 {EMOTIONS.map((e) => (
-                  <TouchableOpacity key={e.type} style={[styles.pill, emotions.includes(e.type) && styles.pillActive]} onPress={() => toggleEmotion(e.type)}>
+                  <ScaleButton key={e.type} style={[styles.pill, emotions.includes(e.type) && styles.pillActive]} onPress={() => toggleEmotion(e.type)}>
                     <Text style={[styles.pillText, emotions.includes(e.type) && styles.pillTextActive]}>{e.label}</Text>
-                  </TouchableOpacity>
+                  </ScaleButton>
                 ))}
               </View>
             </View>
@@ -116,14 +116,14 @@ const styles = StyleSheet.create({
   sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, height: SHEET_HEIGHT, backgroundColor: Colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
   handleWrap: { alignItems: 'center', paddingTop: 12, paddingBottom: 4 },
   handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: Colors.border },
-  scrollContent: { padding: 24, gap: 24, paddingBottom: 8 },
+  scrollContent: { padding: 24, gap: 28, paddingBottom: 8 },
   title: { fontSize: 18, fontWeight: '600', color: Colors.textPrimary, letterSpacing: -0.3 },
-  section: { gap: 10 },
+  section: { gap: 12 },
   sectionLabel: { fontSize: 11, fontWeight: '500', color: Colors.textMuted, letterSpacing: 1.5, textTransform: 'uppercase' },
   input: { backgroundColor: Colors.surface, borderRadius: 10, padding: 14, fontSize: 16, color: Colors.textPrimary, borderWidth: 0.5, borderColor: Colors.border },
-  pillRow: { flexDirection: 'row', gap: 8 },
-  emotionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  pill: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: Colors.surface, borderWidth: 0.5, borderColor: Colors.border },
+  pillRow: { flexDirection: 'row', gap: 10 },
+  emotionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  pill: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 20, backgroundColor: Colors.surface, borderWidth: 0.5, borderColor: Colors.border },
   pillActive: { backgroundColor: Colors.background, borderWidth: 1.5, borderColor: Colors.cta },
   pillText: { fontSize: 13, fontWeight: '500', color: Colors.textSecondary },
   pillTextActive: { color: Colors.cta, fontWeight: '600' },

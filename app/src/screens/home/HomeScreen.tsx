@@ -122,7 +122,7 @@ function EmptyCard({ onPress }: { onPress: () => void }) {
     <View style={styles.summaryCard}>
       <Text style={styles.emptyCardTitle}>첫 코칭을 시작하면{'\n'}나의 패턴이 보여요</Text>
       <ScaleButton style={styles.emptyCardBtn} onPress={onPress}>
-        <Text style={styles.emptyCardBtnText}>매매 전 체크할게요</Text>
+        <Text style={styles.emptyCardBtnText}>매매 전 체크하기</Text>
       </ScaleButton>
     </View>
   );
@@ -334,13 +334,13 @@ export default function HomeScreen() {
           style={styles.primaryBtn}
           onPress={() => isLoggedIn ? setSheetVisible(true) : navigation.navigate('SignUp')}
         >
-          <Text style={styles.primaryBtnText}>매매 전 체크할게요</Text>
+          <Text style={styles.primaryBtnText}>매매 전 체크하기</Text>
         </ScaleButton>
         <ScaleButton
           style={styles.secondaryBtn}
           onPress={() => isLoggedIn ? navigation.navigate('PostTrade') : navigation.navigate('SignUp')}
         >
-          <Text style={styles.secondaryBtnText}>매매 했어요 기록할게요</Text>
+          <Text style={styles.secondaryBtnText}>매매 기록하기</Text>
         </ScaleButton>
       </View>
 
@@ -357,7 +357,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
-  content: { padding: 24, paddingBottom: 24, gap: 24 },
+  content: { padding: 24, paddingBottom: 24, gap: 28 },
 
   header: {
     flexDirection: 'row', justifyContent: 'space-between',
@@ -370,15 +370,15 @@ const styles = StyleSheet.create({
   summaryCard: {
     backgroundColor: Colors.surface,
     borderRadius: 16,
-    padding: 20,
+    padding: 24,
     borderWidth: 0.5,
     borderColor: Colors.border,
-    gap: 16,
+    gap: 20,
   },
   divider: {
     height: 0.5,
     backgroundColor: Colors.border,
-    marginHorizontal: -20,
+    marginHorizontal: -24,
     marginVertical: 0,
   },
 
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
   },
 
   // ── 섹션 2
-  section2: { gap: 16 },
+  section2: { gap: 20 },
   metricsRow: {
     flexDirection: 'row',
     gap: 0,
@@ -493,16 +493,16 @@ const styles = StyleSheet.create({
 
   // ── 하단 CTA
   bottomBar: {
-    padding: 20, paddingBottom: 28, gap: 10,
+    padding: 20, paddingBottom: 32, gap: 12,
     borderTopWidth: 0.5, borderTopColor: Colors.border,
     backgroundColor: Colors.background,
   },
   primaryBtn: {
-    backgroundColor: Colors.cta, borderRadius: 12, padding: 16, alignItems: 'center',
+    backgroundColor: Colors.cta, borderRadius: 12, padding: 18, alignItems: 'center',
   },
   primaryBtnText: { color: '#FFF', fontSize: 15, fontWeight: '600' },
   secondaryBtn: {
-    backgroundColor: Colors.surface, borderRadius: 12, padding: 16, alignItems: 'center',
+    backgroundColor: Colors.surface, borderRadius: 12, padding: 18, alignItems: 'center',
   },
   secondaryBtnText: { color: Colors.textPrimary, fontSize: 15, fontWeight: '500' },
 });

@@ -2,7 +2,7 @@ import { AIProvider, CoachingInput, CoachingResult } from './types';
 import { buildSystemWithContext, CONCLUSION_PROMPT } from './systemPrompt';
 import { AI_CONFIG } from './config';
 
-const { model, maxTokens, maxTokensConclusion } = AI_CONFIG.openai;
+const { model, maxTokens, maxTokensConclusion, temperature } = AI_CONFIG.openai;
 
 const API_KEY = process.env.OPENAI_API_KEY ?? process.env.EXPO_PUBLIC_OPENAI_API_KEY ?? '';
 
@@ -31,6 +31,7 @@ export const openaiProvider: AIProvider = {
     return callOpenAI({
       model,
       max_tokens: maxTokens,
+      temperature,
       messages: [
         { role: 'system', content: system },
         ...input.messages.map((m) => ({ role: m.role, content: m.content })),
@@ -43,6 +44,7 @@ export const openaiProvider: AIProvider = {
     const text = await callOpenAI({
       model,
       max_tokens: maxTokensConclusion,
+      temperature,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: system },

@@ -12,10 +12,10 @@ export default function ScaleButton({ onPress, disabled, style, children }: Prop
   const scale = useRef(new Animated.Value(1)).current;
 
   const pressIn = () =>
-    Animated.timing(scale, { toValue: 0.97, duration: 100, useNativeDriver: true }).start();
+    Animated.timing(scale, { toValue: 0.94, duration: 80, useNativeDriver: true }).start();
 
   const pressOut = () =>
-    Animated.timing(scale, { toValue: 1, duration: 100, useNativeDriver: true }).start();
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 300, friction: 20 }).start();
 
   return (
     <TouchableWithoutFeedback

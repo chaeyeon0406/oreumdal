@@ -18,8 +18,9 @@ export const AI_CONFIG = {
 
   openai: {
     model: 'gpt-4o-mini',
-    maxTokens: 300,
-    maxTokensConclusion: 200,
+    maxTokens: 500,
+    maxTokensConclusion: 300,
+    temperature: 0.7,
   },
 } as const;
 

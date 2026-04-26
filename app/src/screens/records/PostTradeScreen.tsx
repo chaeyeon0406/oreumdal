@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TextInput, TouchableOpacity, KeyboardAvoidingView, Platform,
+  TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -69,9 +69,9 @@ export default function PostTradeScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         {/* 헤더 */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
+          <ScaleButton onPress={() => navigation.goBack()} style={styles.closeBtn}>
             <Text style={styles.closeBtnText}>✕</Text>
-          </TouchableOpacity>
+          </ScaleButton>
           <Text style={styles.headerTitle}>매매 기록</Text>
           <View style={{ width: 40 }} />
         </View>
@@ -100,7 +100,7 @@ export default function PostTradeScreen() {
             <Text style={styles.fieldLabel}>매수 / 매도</Text>
             <View style={styles.directionRow}>
               {(['buy', 'sell'] as TradeDirection[]).map((d) => (
-                <TouchableOpacity
+                <ScaleButton
                   key={d}
                   style={[styles.dirBtn, direction === d && styles.dirBtnActive]}
                   onPress={() => setDirection(d)}
@@ -108,7 +108,7 @@ export default function PostTradeScreen() {
                   <Text style={[styles.dirBtnText, direction === d && styles.dirBtnTextActive]}>
                     {d === 'buy' ? '매수' : '매도'}
                   </Text>
-                </TouchableOpacity>
+                </ScaleButton>
               ))}
             </View>
           </View>
@@ -118,7 +118,7 @@ export default function PostTradeScreen() {
             <Text style={styles.fieldLabel}>매매 당시 감정</Text>
             <View style={styles.emotionGrid}>
               {EMOTIONS.map(({ type, label }) => (
-                <TouchableOpacity
+                <ScaleButton
                   key={type}
                   style={[styles.emotionChip, emotions.includes(type) && styles.emotionChipActive]}
                   onPress={() => toggleEmotion(type)}
@@ -126,7 +126,7 @@ export default function PostTradeScreen() {
                   <Text style={[styles.emotionChipText, emotions.includes(type) && styles.emotionChipTextActive]}>
                     {label}
                   </Text>
-                </TouchableOpacity>
+                </ScaleButton>
               ))}
             </View>
           </View>
@@ -201,9 +201,9 @@ const styles = StyleSheet.create({
   dirBtnText: { fontSize: 15, color: Colors.textSecondary, fontWeight: '500' },
   dirBtnTextActive: { color: Colors.cta, fontWeight: '600' },
 
-  emotionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  emotionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   emotionChip: {
-    paddingVertical: 10, paddingHorizontal: 18,
+    paddingVertical: 11, paddingHorizontal: 20,
     borderRadius: 20, backgroundColor: Colors.surface,
     borderWidth: 0.5, borderColor: Colors.border,
   },

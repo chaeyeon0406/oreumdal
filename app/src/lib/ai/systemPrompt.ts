@@ -28,8 +28,18 @@ export const CONCLUSION_PROMPT = `지금까지의 대화를 바탕으로 아래 
 export function buildSystemWithContext(input: CoachingInput): string {
   const directionText = input.direction === 'buy' ? '매수' : '매도';
   let context = `종목: ${input.stockName}\n방향: ${directionText}\n지금 감정: ${input.emotionLabel}`;
+
   if (input.investmentPrinciples) {
     context += `\n\n나의 투자 원칙:\n${input.investmentPrinciples}`;
   }
+
+  if (input.recordSummary) {
+    context += `\n\n[과거 코칭 기록 요약]\n${input.recordSummary}`;
+  }
+
+  if (input.marketContext) {
+    context += `\n\n[현재 시장 상황]\n${input.marketContext}`;
+  }
+
   return `${SYSTEM_PROMPT}\n\n[사용자 정보]\n${context}`;
 }

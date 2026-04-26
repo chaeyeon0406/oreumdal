@@ -6,6 +6,8 @@ export interface CoachingInput {
   emotions: EmotionType[];
   emotionLabel: string;
   investmentPrinciples?: string;
+  recordSummary?: string;
+  marketContext?: string;
   messages: ChatMessage[];
 }
 
