@@ -102,7 +102,7 @@ export default function SignUpScreen() {
       refreshToken: pendingAuth.refreshToken,
       provider: pendingAuth.provider,
     });
-    navigation.navigate('Tabs');
+    navigation.goBack();
   };
 
   if (step === 'social') {
