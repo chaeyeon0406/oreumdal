@@ -17,6 +17,9 @@
       },
       "cache": {
         "disabled": true
+      },
+      "env": {
+        "EXPO_PUBLIC_AI_PROVIDER": "openai"
       }
     },
     "production": {
