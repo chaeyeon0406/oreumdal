@@ -9,7 +9,6 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.80.0",
     "@expo/metro-runtime": "55.0.8-canary-20260327-0789fbc",
     "@gorhom/bottom-sheet": "^5.2.8",
     "@react-native-async-storage/async-storage": "^2.2.0",
