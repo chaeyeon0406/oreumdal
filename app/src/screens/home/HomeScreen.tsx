@@ -294,13 +294,10 @@ export default function HomeScreen() {
         </View>
 
         {/* 요약 카드 */}
-        {isLoggedIn
-          ? <SummaryCard records={records} onStartCheck={() => setSheetVisible(true)} />
-          : <EmptyCard onPress={() => navigation.navigate('SignUp')} />
-        }
+        <SummaryCard records={records} onStartCheck={() => isLoggedIn ? setSheetVisible(true) : navigation.navigate('SignUp')} />
 
         {/* 최근 코칭 */}
-        {isLoggedIn && recentSessions.length > 0 && (
+        {recentSessions.length > 0 && (
           <View style={styles.recentSection}>
             <Text style={styles.sectionLabel}>최근 코칭</Text>
             {recentSessions.map((s) => (
