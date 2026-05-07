@@ -14,6 +14,7 @@ import SignUpBottomSheet from '../../components/common/SignUpBottomSheet';
 import { sendCoachingMessage, generateConclusion } from '../../lib/ai';
 import { buildRecordSummary } from '../../lib/ai/recordSummary';
 import { fetchMarketContext } from '../../lib/ai/marketContext';
+import { requestNotificationPermission, scheduleFollowUp } from '../../lib/notifications';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'CheckChat'>;
 type Route = RouteProp<MainStackParamList, 'CheckChat'>;
@@ -202,11 +203,14 @@ export default function CheckChatScreen() {
     }
   };
 
-  const handleLaterOutcomeNotify = () => {
-    Alert.alert(
-      '알림 예약',
-      `오늘 저녁 8시에 "${stockName} ${directionText}, 결국 어떻게 하셨나요?" 알림을 보내드릴게요.\n(알림 기능은 곧 추가 예정)`
-    );
+  const handleLaterOutcomeNotify = async () => {
+    const granted = await requestNotificationPermission();
+    if (!granted) {
+      Alert.alert('알림 권한 필요', '설정 > 오름달에서 알림을 허용해주세요.');
+      return;
+    }
+    await scheduleFollowUp(stockName, direction);
+    Alert.alert('알림 예약', `8시간 후에 "${stockName} ${directionText}, 결국 어떻게 하셨나요?" 알림을 보내드릴게요.`);
   };
 
   const handleTradeOutcome = (outcome: TradeOutcome) => {

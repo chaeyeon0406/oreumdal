@@ -1,15 +1,22 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, TextInput, ScrollView,
-  KeyboardAvoidingView, Platform, Alert, Modal,
+  KeyboardAvoidingView, Platform, Alert, Modal, Switch,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import ScaleButton from '../../components/common/ScaleButton';
-import { useUserStore } from '../../store/userStore';
+import { useUserStore, NotifSettings } from '../../store/userStore';
 import { useRecordStore } from '../../store/recordStore';
 import { RootStackParamList } from '../../types';
+import {
+  requestNotificationPermission,
+  scheduleDailyReminder,
+  cancelDailyReminder,
+  scheduleWeeklyReport,
+  cancelWeeklyReport,
+} from '../../lib/notifications';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -26,16 +33,75 @@ const PROVIDER_LABEL: Record<string, string> = {
   apple: 'Apple',
 };
 
+const HOURS = Array.from({ length: 17 }, (_, i) => i + 6); // 6~22시
+const DAYS_KR = ['일', '월', '화', '수', '목', '금', '토'];
+const DAYS_EXPO = [1, 2, 3, 4, 5, 6, 7]; // expo: 1=일, 2=월, ..., 7=토
+
 export default function MyPageScreen() {
   const navigation = useNavigation<Nav>();
-  const { principles, setPrinciples, personalityType, nickname, provider, logout } = useUserStore();
+  const { principles, setPrinciples, personalityType, nickname, provider, logout, notifSettings, setNotifSettings } = useUserStore();
   const clearRecords = useRecordStore((s) => s.clearRecords);
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(principles);
   const [showAccount, setShowAccount] = useState(false);
+  const [showNotif, setShowNotif] = useState(false);
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState(nickname);
+  const [notifDraft, setNotifDraft] = useState<NotifSettings>(notifSettings);
+
+  const handleNotifToggleDaily = async (val: boolean) => {
+    if (val) {
+      const granted = await requestNotificationPermission();
+      if (!granted) {
+        Alert.alert('알림 권한 필요', '설정 > 오름달에서 알림을 허용해주세요.');
+        return;
+      }
+      await scheduleDailyReminder(notifDraft.dailyHour);
+    } else {
+      await cancelDailyReminder();
+    }
+    const next = { ...notifDraft, dailyEnabled: val };
+    setNotifDraft(next);
+    setNotifSettings(next);
+  };
+
+  const handleNotifToggleWeekly = async (val: boolean) => {
+    if (val) {
+      const granted = await requestNotificationPermission();
+      if (!granted) {
+        Alert.alert('알림 권한 필요', '설정 > 오름달에서 알림을 허용해주세요.');
+        return;
+      }
+      await scheduleWeeklyReport(notifDraft.weeklyDay, notifDraft.weeklyHour);
+    } else {
+      await cancelWeeklyReport();
+    }
+    const next = { ...notifDraft, weeklyEnabled: val };
+    setNotifDraft(next);
+    setNotifSettings(next);
+  };
+
+  const handleDailyHour = async (hour: number) => {
+    const next = { ...notifDraft, dailyHour: hour };
+    setNotifDraft(next);
+    setNotifSettings(next);
+    if (notifDraft.dailyEnabled) await scheduleDailyReminder(hour);
+  };
+
+  const handleWeeklyDay = async (day: number) => {
+    const next = { ...notifDraft, weeklyDay: day };
+    setNotifDraft(next);
+    setNotifSettings(next);
+    if (notifDraft.weeklyEnabled) await scheduleWeeklyReport(day, notifDraft.weeklyHour);
+  };
+
+  const handleWeeklyHour = async (hour: number) => {
+    const next = { ...notifDraft, weeklyHour: hour };
+    setNotifDraft(next);
+    setNotifSettings(next);
+    if (notifDraft.weeklyEnabled) await scheduleWeeklyReport(notifDraft.weeklyDay, hour);
+  };
 
   const handleLogout = () => {
     Alert.alert('로그아웃', '로그아웃 하시겠어요?', [
@@ -65,7 +131,7 @@ export default function MyPageScreen() {
   };
 
   const menuItems = [
-    { label: '알림 설정', onPress: () => Alert.alert('알림 설정', '곧 지원 예정이에요.') },
+    { label: '알림 설정', onPress: () => { setNotifDraft(notifSettings); setShowNotif(true); } },
     { label: '계정 설정', onPress: () => { setNicknameDraft(nickname); setShowAccount(true); } },
     { label: '로그아웃', danger: true, onPress: handleLogout },
   ];
@@ -123,6 +189,111 @@ export default function MyPageScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* 알림 설정 모달 */}
+      <Modal visible={showNotif} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={styles.modalSafe}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>알림 설정</Text>
+            <ScaleButton onPress={() => setShowNotif(false)} style={styles.modalClose}>
+              <Text style={styles.modalCloseText}>✕</Text>
+            </ScaleButton>
+          </View>
+          <ScrollView contentContainerStyle={styles.modalContent}>
+
+            {/* 매일 리마인더 */}
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardLabel}>매일 리마인더</Text>
+                <Switch
+                  value={notifDraft.dailyEnabled}
+                  onValueChange={handleNotifToggleDaily}
+                  trackColor={{ true: Colors.cta }}
+                  thumbColor="#FFF"
+                />
+              </View>
+              <Text style={styles.principlesEmpty}>매매 전 체크를 잊지 않도록 매일 알려드려요</Text>
+              {notifDraft.dailyEnabled && (
+                <>
+                  <Text style={styles.notifPickerLabel}>알림 시간</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View style={styles.hourRow}>
+                      {HOURS.map((h) => (
+                        <ScaleButton
+                          key={h}
+                          style={[styles.hourPill, notifDraft.dailyHour === h && styles.hourPillActive]}
+                          onPress={() => handleDailyHour(h)}
+                        >
+                          <Text style={[styles.hourPillText, notifDraft.dailyHour === h && styles.hourPillTextActive]}>
+                            {h}시
+                          </Text>
+                        </ScaleButton>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </>
+              )}
+            </View>
+
+            {/* 주간 리포트 */}
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardLabel}>주간 리포트</Text>
+                <Switch
+                  value={notifDraft.weeklyEnabled}
+                  onValueChange={handleNotifToggleWeekly}
+                  trackColor={{ true: Colors.cta }}
+                  thumbColor="#FFF"
+                />
+              </View>
+              <Text style={styles.principlesEmpty}>지난주 나의 투자 심리 패턴을 알려드려요</Text>
+              {notifDraft.weeklyEnabled && (
+                <>
+                  <Text style={styles.notifPickerLabel}>요일</Text>
+                  <View style={styles.dayRow}>
+                    {DAYS_EXPO.map((expoDay, i) => (
+                      <ScaleButton
+                        key={expoDay}
+                        style={[styles.dayPill, notifDraft.weeklyDay === expoDay && styles.hourPillActive]}
+                        onPress={() => handleWeeklyDay(expoDay)}
+                      >
+                        <Text style={[styles.hourPillText, notifDraft.weeklyDay === expoDay && styles.hourPillTextActive]}>
+                          {DAYS_KR[i]}
+                        </Text>
+                      </ScaleButton>
+                    ))}
+                  </View>
+                  <Text style={styles.notifPickerLabel}>시간</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View style={styles.hourRow}>
+                      {HOURS.map((h) => (
+                        <ScaleButton
+                          key={h}
+                          style={[styles.hourPill, notifDraft.weeklyHour === h && styles.hourPillActive]}
+                          onPress={() => handleWeeklyHour(h)}
+                        >
+                          <Text style={[styles.hourPillText, notifDraft.weeklyHour === h && styles.hourPillTextActive]}>
+                            {h}시
+                          </Text>
+                        </ScaleButton>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </>
+              )}
+            </View>
+
+            {/* 코칭 후 결과 추적 */}
+            <View style={styles.card}>
+              <Text style={styles.cardLabel}>코칭 후 결과 추적</Text>
+              <Text style={styles.principlesEmpty}>
+                코칭 화면에서 "나중에 알려주기"를 선택하면 8시간 후 자동으로 알림을 보내드려요
+              </Text>
+            </View>
+
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
 
       {/* 계정 설정 모달 */}
       <Modal visible={showAccount} animationType="slide" presentationStyle="pageSheet">
@@ -207,4 +378,19 @@ const styles = StyleSheet.create({
 
   saveNicknameBtn: { backgroundColor: Colors.cta, borderRadius: 10, padding: 14, alignItems: 'center' },
   saveNicknameBtnText: { color: '#FFF', fontSize: 15, fontWeight: '600' },
+
+  notifPickerLabel: { fontSize: 12, color: Colors.textMuted, fontWeight: '500', marginTop: 4 },
+  hourRow: { flexDirection: 'row', gap: 8 },
+  dayRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  hourPill: {
+    paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20,
+    backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border,
+  },
+  hourPillActive: { backgroundColor: Colors.cta, borderColor: Colors.cta },
+  hourPillText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
+  hourPillTextActive: { color: '#FFF' },
+  dayPill: {
+    width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border,
+  },
 });

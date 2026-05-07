@@ -11,6 +11,23 @@ const KEYS = {
   accessToken: 'user_access_token',
   refreshToken: 'user_refresh_token',
   provider: 'user_provider',
+  notifSettings: 'user_notif_settings',
+};
+
+export interface NotifSettings {
+  dailyEnabled: boolean;
+  dailyHour: number;
+  weeklyEnabled: boolean;
+  weeklyDay: number; // 1=일, 2=월, ..., 7=토
+  weeklyHour: number;
+}
+
+const DEFAULT_NOTIF: NotifSettings = {
+  dailyEnabled: false,
+  dailyHour: 9,
+  weeklyEnabled: false,
+  weeklyDay: 2,
+  weeklyHour: 9,
 };
 
 interface LoginParams {
@@ -31,6 +48,7 @@ interface UserStore {
   accessToken: string;
   refreshToken: string;
   provider: string;
+  notifSettings: NotifSettings;
 
   setPrinciples: (v: string) => void;
   setPersonalityType: (v: string) => void;
@@ -38,6 +56,7 @@ interface UserStore {
   login: (params: LoginParams) => void;
   logout: () => void;
   loadFromStorage: () => Promise<void>;
+  setNotifSettings: (s: NotifSettings) => void;
 }
 
 export const useUserStore = create<UserStore>((set) => ({
@@ -50,6 +69,7 @@ export const useUserStore = create<UserStore>((set) => ({
   accessToken: '',
   refreshToken: '',
   provider: '',
+  notifSettings: DEFAULT_NOTIF,
 
   setPrinciples: (v) => {
     set({ principles: v });
@@ -87,7 +107,7 @@ export const useUserStore = create<UserStore>((set) => ({
   },
 
   loadFromStorage: async () => {
-    const [principles, personalityType, isLoggedIn, nickname, hasCompletedOnboarding, userId, accessToken, refreshToken, provider] =
+    const [principles, personalityType, isLoggedIn, nickname, hasCompletedOnboarding, userId, accessToken, refreshToken, provider, notifRaw] =
       await Promise.all([
         AsyncStorage.getItem(KEYS.principles),
         AsyncStorage.getItem(KEYS.personality),
@@ -98,6 +118,7 @@ export const useUserStore = create<UserStore>((set) => ({
         AsyncStorage.getItem(KEYS.accessToken),
         AsyncStorage.getItem(KEYS.refreshToken),
         AsyncStorage.getItem(KEYS.provider),
+        AsyncStorage.getItem(KEYS.notifSettings),
       ]);
     set({
       principles: principles ?? '',
@@ -109,6 +130,12 @@ export const useUserStore = create<UserStore>((set) => ({
       accessToken: accessToken ?? '',
       refreshToken: refreshToken ?? '',
       provider: provider ?? '',
+      notifSettings: notifRaw ? { ...DEFAULT_NOTIF, ...JSON.parse(notifRaw) } : DEFAULT_NOTIF,
     });
+  },
+
+  setNotifSettings: (s) => {
+    set({ notifSettings: s });
+    AsyncStorage.setItem(KEYS.notifSettings, JSON.stringify(s));
   },
 }));
