@@ -16,18 +16,12 @@ const KEYS = {
 
 export interface NotifSettings {
   dailyEnabled: boolean;
-  dailyHour: number;
   weeklyEnabled: boolean;
-  weeklyDay: number; // 1=일, 2=월, ..., 7=토
-  weeklyHour: number;
 }
 
 const DEFAULT_NOTIF: NotifSettings = {
   dailyEnabled: false,
-  dailyHour: 9,
   weeklyEnabled: false,
-  weeklyDay: 2,
-  weeklyHour: 9,
 };
 
 interface LoginParams {
