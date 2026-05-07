@@ -169,7 +169,7 @@ export default function MyPageScreen() {
 
             <View style={styles.card}>
               <Text style={styles.cardLabel}>소셜 로그인</Text>
-              <Text style={styles.principlesText}>{PROVIDER_LABEL[provider] ?? provider || '-'}</Text>
+              <Text style={styles.principlesText}>{PROVIDER_LABEL[provider] || provider || '-'}</Text>
             </View>
           </ScrollView>
         </SafeAreaView>
